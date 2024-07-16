@@ -42,12 +42,17 @@ class DuelingDQN(nn.Module):
         self.noisy=noisy
 
         self.body = body(input_shape, num_outputs, noisy, sigma_init)
+        # self.body：初始化特征提取网络 body，该网络根据 input_shape 提取输入数据的特征。
 
         self.adv1 = nn.Linear(self.body.feature_size(), 512) if not self.noisy else NoisyLinear(self.body.feature_size(), 512, sigma_init)
         self.adv2 = nn.Linear(512, self.num_actions) if not self.noisy else NoisyLinear(512, self.num_actions, sigma_init)
 
         self.val1 = nn.Linear(self.body.feature_size(), 512) if not self.noisy else NoisyLinear(self.body.feature_size(), 512, sigma_init)
         self.val2 = nn.Linear(512, 1) if not self.noisy else NoisyLinear(512, 1, sigma_init)
+
+        # self.adv1 和 self.adv2：用于计算优势值的全连接层。
+        # self.val1 和 self.val2：用于计算状态值的全连接层。
+        #NoisyLinear：如果 noisy 为真，使用 NoisyLinear 层，否则使用普通的 Linear 层。
         
     def forward(self, x):
         x = self.body(x)
