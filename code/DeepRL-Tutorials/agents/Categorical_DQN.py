@@ -9,11 +9,11 @@ from networks.networks import CategoricalDQN
 
 class Model(DQN_Agent):
     def __init__(self, static_policy=False, env=None, config=None):
-        self.atoms = config.ATOMS
-        self.v_max = config.V_MAX
-        self.v_min = config.V_MIN
-        self.supports = torch.linspace(self.v_min, self.v_max, self.atoms).view(1, 1, self.atoms).to(config.device)
-        self.delta = (self.v_max - self.v_min) / (self.atoms - 1)
+        self.atoms = config.ATOMS # 离散化的支持数量
+        self.v_max = config.V_MAX # 支持的最大值
+        self.v_min = config.V_MIN # 支持的最小值
+        self.supports = torch.linspace(self.v_min, self.v_max, self.atoms).view(1, 1, self.atoms).to(config.device) # 离散化后的支持值。
+        self.delta = (self.v_max - self.v_min) / (self.atoms - 1) # 支持的间隔
 
         super(Model, self).__init__(static_policy, env, config)
 
@@ -45,7 +45,7 @@ class Model(DQN_Agent):
             m.view(-1).index_add_(0, (l + offset).view(-1), (max_next_dist * (u.float() - b)).view(-1))  # m_l = m_l + p(s_t+n, a*)(u - b)
             m.view(-1).index_add_(0, (u + offset).view(-1), (max_next_dist * (b - l.float())).view(-1))  # m_u = m_u + p(s_t+n, a*)(b - l)
 
-        return m
+        return m #投影后的分布
     
     def compute_loss(self, batch_vars):
         batch_state, batch_action, batch_reward, non_final_next_states, non_final_mask, empty_next_state_values, indices, weights = batch_vars
@@ -59,7 +59,7 @@ class Model(DQN_Agent):
 
         target_prob = self.projection_distribution(batch_vars)
           
-        loss = -(target_prob * current_dist.log()).sum(-1)
+        loss = -(target_prob * current_dist.log()).sum(-1) #KL散度损失，用于衡量当前分布与目标分布之间的差异
         if self.priority_replay:
             self.memory.update_priorities(indices, loss.detach().squeeze().abs().cpu().numpy().tolist())
             loss = loss * weights
@@ -67,7 +67,7 @@ class Model(DQN_Agent):
 
         return loss
 
-    def get_action(self, s, eps):
+    def get_action(self, s, eps): #根据状态 s 选择动作，使用分布的期望值来选择最大Q值的动作。
         with torch.no_grad():
             if np.random.random() >= eps or self.static_policy or self.noisy:
                 X = torch.tensor([s], device=self.device, dtype=torch.float) 
@@ -78,6 +78,6 @@ class Model(DQN_Agent):
             else:
                 return np.random.randint(0, self.num_actions)
 
-    def get_max_next_state_action(self, next_states):
+    def get_max_next_state_action(self, next_states): #计算下一状态中Q值最大的动作的分布。
         next_dist = self.target_model(next_states) * self.supports
         return next_dist.sum(dim=2).max(1)[1].view(next_states.size(0), 1, 1).expand(-1, -1, self.atoms)
