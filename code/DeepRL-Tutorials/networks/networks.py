@@ -233,13 +233,15 @@ class DRQN(nn.Module):
         batch_size = x.size(0)
         sequence_length = x.size(1)
         
-        x = x.view((-1,)+self.input_shape)
+        x = x.view((-1,)+self.input_shape) #将输入 x 重新调整形状，使其匹配特征提取网络的输入
         
         #format outp for batch first gru
-        feats = self.body(x).view(batch_size, sequence_length, -1)
-        hidden = self.init_hidden(batch_size) if hx is None else hx
-        out, hidden = self.gru(feats, hidden)
-        x = self.fc2(out)
+        feats = self.body(x).view(batch_size, sequence_length, -1) #通过特征提取网络提取特征，并调整形状以适应GRU层的输入。
+        hidden = self.init_hidden(batch_size) if hx is None else hx #初始化隐藏状态，如果提供了 hx，则使用 hx 作为隐藏状态。
+        out, hidden = self.gru(feats, hidden) #将特征通过GRU层，获取输出和新的隐藏状态。
+        x = self.fc2(out)  #通过全连接层，输出Q值。
+
+        #：返回Q值和隐藏状态。
 
         return x, hidden
 
@@ -270,13 +272,15 @@ class ActorCritic(nn.Module):
           lambda x: nn.init.constant_(x, 0))
 
         self.critic_linear = init_(nn.Linear(512, 1))
+        # Critic网络的输出层，全连接层，输入维度为512，输出维度为1，用于估计状态值。
 
         init_ = lambda m: self.layer_init(m, nn.init.orthogonal_,
               lambda x: nn.init.constant_(x, 0), gain=0.01)
 
         self.actor_linear = init_(nn.Linear(512, num_actions))
+        #self.actor_linear：Actor网络的输出层，全连接层，输入维度为512，输出维度为动作的数量，用于生成动作的logits。
 
-        self.train()
+        self.train() #将模型设置为训练模式。
 
     def forward(self, inputs):
         x = F.relu(self.conv1(inputs/255.0))
