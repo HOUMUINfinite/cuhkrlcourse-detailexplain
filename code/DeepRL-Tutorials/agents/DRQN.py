@@ -1,3 +1,4 @@
+# 使用了递归神经网络（RNN）来处理序列数据。这种方法适用于那些状态具有时间依赖性的环境，如部分可观察的马尔可夫决策过程（POMDP）。
 import numpy as np
 
 import torch
